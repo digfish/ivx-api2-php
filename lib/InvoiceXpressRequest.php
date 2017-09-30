@@ -1,6 +1,6 @@
 <?php
 
-//include_once('XmlDomConstruct.php');
+
 /**
  * A simple PHP API wrapper for the InvoiceXpress API.
  * All post vars can be found on the developer site: https://invoicexpress.com/api/overview

@@ -1,6 +1,6 @@
 {
-    "name": "digfish/invoicexpressrequest-php-api",
-    "version": "1.1",
+    "name": "digfish/ivx-api2-php",
+    "version": "2.0",
     "description": "PHP client implementation of InvoiceXpress API",
     "license" : "MIT",
     "autoload": {
