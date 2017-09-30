@@ -2,16 +2,18 @@
 
 
 /**
- * A simple PHP API wrapper for the InvoiceXpress API.
- * All post vars can be found on the developer site: https://invoicexpress.com/api/overview
+ * A simple PHP API wrapper for the InvoiceXpress API 2.0 .
+ * Full documentation about the new version 2.0 https://developers.invoicexpress.com/docs/versions/2.0.0
+ * Still base in the Original InvoiceXpressRequest by Nuno Morgadinho
  * Stay up to date on Github: https://github.com/nunomorgadinho/InvoiceXpressRequest-PHP-API
  * Slight modifications and corrections by Samuel Viana
+ * More about: https://github.com/digfish/ivx-api2-php
  * PHP version 5
  *
  * @author     original by Nuno Morgadinho <nuno@widgilabs.com>
  * @author     modified and adapted by Samuel Viana <pescadordigital@gmail.com>
  * @license    MIT
- * @version    1.0
+ * @version    2.0
  */
 class InvoiceXpressRequestException extends Exception {
     
@@ -155,7 +157,7 @@ class InvoiceXpressRequest {
      * Get the original XML answer from the InvoiceXpress API
      * 
      */
-    public function getResponseXml() {
+    public function getResponseJson() {
         return $this->_serverAnswer;
     }
 
@@ -400,7 +402,6 @@ class InvoiceXpressRequest {
         
         $url .= "&" . $this->_query_str;
 
-
         if ($this->_debug) {
             echo ("==> URL = " . $url . "\n");
         }
@@ -415,7 +416,7 @@ class InvoiceXpressRequest {
         curl_setopt($ch, CURLOPT_HTTPHEADER, array("Content-Type: application/json; charset=utf-8"));
 
         $result = curl_exec($ch);
-        $this->$r = $result;
+        $this->$result = $result;
         $http_status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
         if (curl_errno($ch)) {
@@ -427,13 +428,16 @@ class InvoiceXpressRequest {
 
         // if weird simplexml error then you may have the a user with
         // a user_meta wc_ie_client_id defined that not exists in InvoiceXpress
-        
-        var_dump($result);
+        if ($this->_debug)
+            var_dump($result);
+
         if ($result && $result != " ") {
             $res = print_r($result, true);
             if ($this->_debug) {
                 echo("result string = {" . $res . "}");
             }
+
+            $this->_serverAnswer = $result;
 
             $response = json_decode($result, true);
 

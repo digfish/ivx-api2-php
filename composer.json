@@ -1,7 +1,7 @@
 {
     "name": "digfish/ivx-api2-php",
     "version": "2.0",
-    "description": "PHP client implementation of InvoiceXpress API",
+    "description": "PHP client implementation of InvoiceXpress API using new json-based API 2.0",
     "license" : "MIT",
     "autoload": {
 				    "classmap":  [

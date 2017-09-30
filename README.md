@@ -8,3 +8,4 @@ Made 'compose'-able with the addition of composer.json
 Made slightly corrections since the methods that made use of the HTTP GET command
 are not using XML anymore.
 
+Made compatible with the new API version 2.0 that now natively responds with JSON format.
