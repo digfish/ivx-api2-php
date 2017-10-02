@@ -45,7 +45,7 @@ With the following class, which extends the class in InvoiceXpressRequest.php :
 ```
 
 
-You should already have assigned values to the IVX_DOMAIN and IVX_TOKEN . If, for example you are using myFirm as the name for your company you should use that name. The IVX_TOKEN is API Key you can obtain at the InvoiceXpress backoffice in Account >> Integrations >> API .
+You should already have assigned values to the ```IVX_DOMAIN``` and ```IVX_TOKEN``` . If, for example you are using myFirm as the name for your company you should use that name. The ```IVX_TOKEN``` is the API Key you can obtain at the InvoiceXpress backoffice in Account >> Integrations >> API .
 
 You can then assign to them:
 ```php
@@ -64,6 +64,9 @@ Then, to invoke your new class to get data, like listing invoices, you can do:
 ```php
  $args['page'] = 3;
 ```
-The API response should be in the $response variable, which contains a PHP array with the invoice data.
-.
+The API response should be in the ```$response``` variable, which contains a PHP array with the invoice data.
 
+
+## Some things are not implemented
+
+Only the methods to list and manipulate Invoices, Clients and access the Invoice Items are available. Methods that use other things like Estimates, Guides, Purchase Orders, Sequences, Taxes and Accounts were not implemented (yet).

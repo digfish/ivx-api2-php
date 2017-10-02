@@ -160,7 +160,8 @@ class InvoiceXpressRequest {
         return $this->_serverAnswer;
     }
 
-    /*
+    /* @deprecated
+     * not using XML anymore
      * Get the generated XML to view. This is useful for debugging
      * to see what you're actually sending over the wire. Call this
      * after $ie->post() but before your make your $ie->request()
