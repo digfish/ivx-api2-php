@@ -4,8 +4,7 @@
 /**
  * A simple PHP API wrapper for the InvoiceXpress API 2.0 .
  * Full documentation about the new version 2.0 https://developers.invoicexpress.com/docs/versions/2.0.0
- * Still base in the Original InvoiceXpressRequest by Nuno Morgadinho
- * Stay up to date on Github: https://github.com/nunomorgadinho/InvoiceXpressRequest-PHP-API
+ * Forked from nunomorgadinho/InvoiceXpressRequest-PHP-API
  * Slight modifications and corrections by Samuel Viana
  * More about: https://github.com/digfish/ivx-api2-php
  * PHP version 5
