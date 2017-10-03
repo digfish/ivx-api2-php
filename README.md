@@ -13,23 +13,16 @@ With the following class, which extends the class in InvoiceXpressRequest.php :
 ```php
 <?php class MyInvoiceXpressApi extends InvoiceXpressRequest
 {
-
-
-    public static function init($domain, $token)
-    {
+    public static function init($domain, $token)   {
         parent::init($domain, $token);
-        self::$isInitialized = true;
     }
 
-    public function __construct($method)
-    {
+    public function __construct($method) {
         self::init(IVX_DOMAIN,IVX_TOKEN);
         parent::__construct($method);
     }
 
-
-    public function invoke($args = array(), $debug = false)
-    {
+    public function invoke($args = array(), $debug = false)    {
         $this->post($args);
         echo "** Invoking {$this->_method} **\n ";
         $response = $this->getResponse();
@@ -70,3 +63,4 @@ The API response should be in the ```$response``` variable, which contains a PHP
 ## Some things are not implemented
 
 Only the methods to list and manipulate Invoices, Clients and access the Invoice Items are available. Methods that use other things like Estimates, Guides, Purchase Orders, Sequences, Taxes and Accounts were not implemented (yet).
+Some methods that require that the args are passed through JSON as request (and don't use HTTP GET method) to the API server are still to be implemented.
