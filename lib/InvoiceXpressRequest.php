@@ -3,7 +3,8 @@
 
 /**
  * A simple PHP API wrapper for the InvoiceXpress API 2.0 .
- * Full documentation about the new version 2.0 https://developers.invoicexpress.com/docs/versions/2.0.0
+ * Full documentation about the new version 2.0
+ * @see https://developers.invoicexpress.com/docs/versions/2.0.0
  * Forked from nunomorgadinho/InvoiceXpressRequest-PHP-API
  * Slight modifications and corrections by Samuel Viana
  * More about: https://github.com/digfish/ivx-api2-php
@@ -60,9 +61,12 @@ class InvoiceXpressRequest {
     /*
      * Holds the response after our request
      */
-    protected $_response = array();
+    protected $_response = NULL;
     protected $_debug = FALSE;
     
+    protected $_raw_response = "";
+    protected $_json_response = "";
+
     /**
      * holds the query string, url-encoded with the args
      * @var string 
@@ -73,6 +77,12 @@ class InvoiceXpressRequest {
      * 
      */
     protected $_http_method = 'GET';
+
+    /**
+     * holds if there was an unexpected HTML response
+     */
+    protected $_was_html_response = false;
+
     
     /*
      * Initialize the and store the domain/token for making requests
@@ -94,11 +104,29 @@ class InvoiceXpressRequest {
      * @return null
      */
 
-    public function __construct($method) {
+    public function __construct($method='') {
+        if ( empty($method) ) {
+            if ($this->_debug) {
+               print "Warning: no method specified! Use setMethod to do that!"; 
+            } 
+        } else {
+            $this->_method = $method;
+        }
+    }
+
+    /** In case you created an instance with the no-args constructor
+    * You should use this method to assign the API method later
+    * or in case you want to reuse the same method
+    * @param The new method
+    */
+    public function setMethod($method) {
         $this->_method = $method;
     }
 
-    public function withDebug($yes) {
+    /**
+    * Set in debugging mode
+    */
+    public function withDebug($yes=TRUE) {
         $this->_debug = $yes;
     }
 
@@ -108,17 +136,26 @@ class InvoiceXpressRequest {
      * @return null
      */
 
-    public function post($data) {
+    public function set_http_default_args() {
         list($entity,$method) = explode(".", $this->_method);
-        $this->setRequiredArgs($entity, $method);
-        $default_args = $this->_args;
-        $this->_args = array_merge($default_args,$data);
-        $this->_query_str = http_build_query($this->_args);
+        $required_args = $this->setRequiredArgs($entity, $method);
+        if ($this->_http_method == 'GET') {
+            $this->_args = array_merge($required_args,$this->_args);
+            $this->_query_str = http_build_query($this->_args);
+        }
     }
     
-    
+    /** @param set the arguments of the request
+    */
     public function set_args($data) {
-        $this->post($data);
+        $this->_args = $data;
+    }
+
+
+    /** @param get the current arguments of the request
+    */
+    public function get_args() {
+        return $this->_args;
     }
     
 
@@ -148,44 +185,44 @@ class InvoiceXpressRequest {
      * @return array
      */
 
-    public function getResponse() {
-        return $this->_response;
+    public function getRawResponse() {
+        return $this->_raw_response;
     }
 
     /**
-     * Get the original XML answer from the InvoiceXpress API
+     * Get the original Json answe11r from the InvoiceXpress API
      * 
      */
-    public function getResponseJson() {
-        return $this->_serverAnswer;
+    public function getJsonResponse() {
+        return $this->_json_response;
     }
 
-    /* @deprecated
+    /**
      * not using XML anymore
-     * Get the generated XML to view. This is useful for debugging
+     * Get the generated JSON generated from the args
+     *. This is useful for debugging
      * to see what you're actually sending over the wire. Call this
-     * after $ie->post() but before your make your $ie->request()
+     * after $ie->set_args() but before your make your $ie->request()
      *
-     * @return array
+     * @return string with JSON encoded
      */
 
-    public function getGeneratedXML() {
+    public function getGeneratedJson() {
 
-        $dom = new XmlDomConstruct('1.0', 'utf-8');
-        $dom->fromMixed($this->_args);
-        $post_data = $dom->saveXML();
+        $set_args_data = json_encode($this->_args,JSON_PRETTY_PRINT);
 
-        return $post_data;
+        return $set_args_data;
     }
     
     /**
-     * this function is called initally on post to properly initialize
+     * this function is called initally on set_args to properly initialize
      * the required parameters with their default values
      * @param type $entity
      * @param type $method
      */
     private function setRequiredArgs($entity,$method) {
         $required_args = array();
+
        if ($entity === 'invoices') {
            if ($method === 'list') {
                $required_args = array(
@@ -207,7 +244,7 @@ class InvoiceXpressRequest {
                );
            }
        } 
-       $this->_args = $required_args;
+       return $required_args;
     }
 
     /**
@@ -217,39 +254,43 @@ class InvoiceXpressRequest {
      *
      * 
      * @param bool      $ch         cURL Handle
-     * @param array     $class      InvoiceXpress Method to run exploded
+     * @param array     $cmd_tokens      Array with the InvoiceXpress URL tokens for the respective method 
      * @param string    $url        Built URL so far      
      * @param int       $id         InvoiceXpress invoice ID
      * 
      * @return  string
      */
-    public function invoiceMethods($ch, $class, $url, $id) {
+    public function invoiceMethods($ch, $cmd_tokens, $url, $id) {
 
-        switch ($class[1]) {
+        list($entity,$method) = $cmd_tokens;
+
+
+        switch ($method) {
             case 'create':
-                curl_setopt($ch, CURLOPT_POST, 1);
                 $this->_http_method = 'POST';
-                $url = str_replace('{{ CLASS }}', $class[0], $url);
+                $url = str_replace('{{ CLASS }}', $entity, $url);
                 break;
             case 'list':
-                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'GET');
-                $url = str_replace('{{ CLASS }}', $class[0], $url);
-                
+                $url = str_replace('{{ CLASS }}', $entity, $url);
                 break;
             case 'change-state':
-            case 'email-invoice':
-                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
                 $this->_http_method = 'PUT';
-                $url = str_replace('{{ CLASS }}', $class[0] . "/" . $id . "/" . $class[1], $url);
+                $url =  str_replace('{{ CLASS }}', "$entity/$id/$method",$url);
+                break;
+            case 'email-document':
+                $this->_http_method = 'PUT';
+                $url = str_replace('{{ CLASS }}', "$entity/$id/$method", $url);
                 break;
             case 'get':
-                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'GET');
-                $url = str_replace('{{ CLASS }}', $class[0] . "/" . $id, $url);
+                $url = str_replace('{{ CLASS }}', "$entity/$id", $url);
                 break;
             case 'update':
                 $this->_http_method = 'PUT';
-                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
-                $url = str_replace('{{ CLASS }}', $class[0] . "/" . $id, $url);
+                $url = str_replace('{{ CLASS }}', "$entity/$id", $url);
+                break;
+            case 'related_documents':
+                $this->_http_method = 'GET';
+                $url = str_replace('{{ CLASS }}', "$entity/$id/$method" , $url);
                 break;
         }
 
@@ -258,13 +299,31 @@ class InvoiceXpressRequest {
         return $url;
     }
 
-    public function itemMethods($ch, $class, $url, $id, $extra = '') {
-        $methodName = $class[1];
-        switch ($methodName) {
+    public function itemMethods($ch, $cmd_tokens, $url, $id) {
+
+        list($entity,$method) = $cmd_tokens;
+
+        switch ($method) {
             case 'list':
-                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'GET');
-                $url = str_replace('{{ CLASS }}', $class[0], $url);
-                break;
+                $this->_http_method = 'GET';
+                $url = str_replace('{{ CLASS }}', $entity, $url);
+            break;
+            case 'create':
+                $this->_http_method = 'POST';
+                $url = str_replace('{{ CLASS }}', $entity, $url);
+            break;
+            case 'get':
+                $this->_http_method = 'GET';
+                $url = str_replace('{{ CLASS }}', "$entity/$id", $url);
+            break;
+            case 'update':
+                $this->_http_method = 'PUT';
+                $url = str_replace('{{ CLASS }}', "$entity/$id", $url);
+            break;
+            case 'delete':
+                $this->_http_method = 'DELETE';
+                $url = str_replace('{{ CLASS }}', "$entity/$id", $url);
+            break;
         }
 
 
@@ -278,57 +337,42 @@ class InvoiceXpressRequest {
      *
      * 
      * @param bool      $ch         cURL Handle
-     * @param array     $class      InvoiceXpress Method to run exploded
+     * @param array     $cmd_tokens      InvoiceXpress Method to run exploded
      * @param string    $url        Built URL so far      
      * @param int       $id         InvoiceXpress invoice ID
-     * @param string    $extra      Special case usage for adding Extra parameter GET before API_KEY
      * 
      * @return  string
      */
-    public function clientMethods($ch, $class, $url, $id, $extra = '') {
+    public function clientMethods($ch, $cmd_tokens, $url, $id) {
 
-        switch ($class[1]) {
+        list($entity,$method) = $cmd_tokens;
+
+
+        switch ($method) {
             case 'create':
+                $this->_http_method = 'POST';
+                $url = str_replace('{{ CLASS }}', $entity, $url);
+                break;
             case 'list':
-                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'GET');
-                $url = str_replace('{{ CLASS }}', $class[0], $url);
-
-                //curl_setopt($ch, CURLOPT_POST, 0);
-
-
+                $this->_http_method = 'GET';
+                $url = str_replace('{{ CLASS }}', $entity, $url);
                 break;
             case 'get':
-                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'GET');
-                $url = str_replace('{{ CLASS }}', "clients/" . $id, $url);
-
+                $this->_http_method = 'GET';
+                $url = str_replace('{{ CLASS }}', "clients/$id" , $url);
                 break;
             case 'update':
-                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'PUT');
-                $url = str_replace('{{ CLASS }}', "clients/" . $id, $url);
+                $url = str_replace('{{ CLASS }}', "clients/$id", $url);
                 $this->_http_method = 'PUT';
                 break;
             case 'invoices':
-                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'GET');
-                $url = str_replace('{{ CLASS }}', "clients/" . $id . "/" . $class[1], $url);
-
+                $this->_http_method = 'GET';
+                $url = str_replace('{{ CLASS }}', "clients/$id/$method", $url);
                 break;
-            case 'find-by-name':
-                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'GET');
-                $url = str_replace('{{ CLASS }}', "clients/" . $class[1], $url);
-                $url .= "?client_name=" . $extra . "&api_key=" . self::$_token;
-                break;
+            case 'find-by-name': 
             case 'find-by-code':
-                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'GET');
-                $url = str_replace('{{ CLASS }}', "clients/" . $class[1], $url);
-                $url .= "?client_code=" . $extra . "&api_key=" . self::$_token;
-                break;
-            case 'create-invoice':
-            case 'create-cash-invoice':
-            case 'create-credit-note':
-            case 'create-debit-note':
-                list($before, $after) = explode('-', $class[1], 2);
-                $url = str_replace('{{ CLASS }}', "clients/" . $id . "/" . $before . "/" . $after, $url);
-
+                $this->_http_method = 'GET';
+                $url = str_replace('{{ CLASS }}', "clients/$method", $url);
                 break;
         }
 
@@ -337,10 +381,10 @@ class InvoiceXpressRequest {
     }
 
     /**
+     * 
      * request
      *
      * Send the request over the wire
-     *
      * 
      * @param int       $id         InvoiceXpress invoice ID
      * @param array     $extra      Special case usage for adding Extra parameter GET before API_KEY (ex: https://:screen-name.invoicexpress.net/clients/find-by-code.xml?client_code=Ni+Hao&API_KEY=XXX)
@@ -349,71 +393,94 @@ class InvoiceXpressRequest {
      * @return  array
      */
     public function request($id = '', $extra = '') {
+
         if (!self::$_domain || !self::$_token) {
             throw new InvoiceXpressRequestException('You need to call InvoiceXpressRequest::init($domain, $token) with your domain and token.');
         }
-        
-        $post_data = NULL;
-        
-        if ($this->_http_method != 'GET') {
-            $post_data = $this->getGeneratedXML();
-            
-            if ($this->_debug) {
-                $p = print_r($post_data, true);
-                echo("post = " . $p . "\n");
-            }
+
+        if (empty($this->_method)) {
+            throw new InvoiceXpressRequestException('You need to set the proper API method through setMethod()!');
         }
+        
+        $set_args_data = NULL;
 
         $url = str_replace('{{ DOMAIN }}', self::$_domain, $this->_api_url);
 
-        $class = explode(".", $this->_method);
+        $url .= "?api_key=" . self::$_token;
+
+
+        $cmd_tokens = explode(".", $this->_method);
+
+        list($entity,$method) = $cmd_tokens;
 
         if ($this->_debug)
-            echo ("=> METHOD " . print_r($class, TRUE));
+            echo ("=> METHOD " . print_r($cmd_tokens, TRUE));
 
         $ch = curl_init();    // initialize curl handle
         //Filter correct method to run and return $url
-        switch ($class[0]) {
+        switch ($entity) {
             case 'invoices':
+            case 'invoice_receipts':
+            case 'document':
             case 'simplified_invoices':
-                $url = $this->invoiceMethods($ch, $class, $url, $id);
+            case 'credit_notes':
+            case 'debit_notes':
+                $url = $this->invoiceMethods($ch, $cmd_tokens, $url, $id);
                 break;
             case 'clients':
-                $url = $this->clientMethods($ch, $class, $url, $id, $extra);
+                $url = $this->clientMethods($ch, $cmd_tokens, $url, $id);
                 break;
             case 'items':
-                $url = $this->itemMethods($ch, $class, $url, $id, $extra);
+                $url = $this->itemMethods($ch, $cmd_tokens, $url, $id);
                 break;
             default:
-                echo ("The methods for the {$class[0]} were not implemented yet!");
+                echo ("The methods for the $entity were not implemented yet!");
+                return;
                 break;
         }
+
+        if ($this->_http_method != 'GET') {
+            $set_args_data = $this->getGeneratedJson();
+            
+            if ($this->_debug) {
+                $p = print_r($set_args_data, true);
+                echo("args = " . $p . "\n");
+            }
+        }
+
+        $this->set_http_default_args();
         
-        if ($this->_http_method == 'GET' || $this->_http_method == 'PUT') {
+        if ($this->_http_method == 'PUT') {
             curl_setopt($ch, CURLOPT_CUSTOMREQUEST,$this->_http_method);
         } else if ($this->_http_method == 'POST') {
             curl_setopt($ch, CURLOPT_POST, 1);
         }
 
-
-        $this->setRequiredArgs($class[0],$class[1] );
-
-        $url .= "?api_key=" . self::$_token;
-        
-        $url .= "&" . $this->_query_str;
-
-        if ($this->_debug) {
-            echo ("==> URL = " . $url . "\n");
+        if ($this->_http_method == 'GET') {
+            $this->setRequiredArgs($entity,$method );
         }
-        curl_setopt($ch, CURLOPT_URL, $url); // set url to post to
+
+        
+        if (!empty($this->_query_str)) {
+            $url .= "&" . $this->_query_str;
+        }
+
+        echo ($this->_http_method . ' ' . $url . "\n");
+        if (!empty($this->getGeneratedJson())) {
+            echo $this->getGeneratedJson();
+            echo "\n";
+        }
+
+        curl_setopt($ch, CURLOPT_URL, $url); // set url to set_args to
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1); // return into a variable
         curl_setopt($ch, CURLOPT_TIMEOUT, 40); // times out after 40s
         curl_setopt($ch, CURLOPT_VERBOSE, $this->_debug);
         
         if ($this->_http_method != 'GET')
-            curl_setopt($ch, CURLOPT_POSTFIELDS, $post_data); // add POST fields
+            curl_setopt($ch, CURLOPT_POSTFIELDS, $set_args_data); // add set_args fields
         
-        curl_setopt($ch, CURLOPT_HTTPHEADER, array("Content-Type: application/json; charset=utf-8"));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, array("Content-Type: application/json; charset=utf-8",
+        	"Accept: application/json"));
 
         $result = curl_exec($ch);
         $this->$result = $result;
@@ -426,37 +493,51 @@ class InvoiceXpressRequest {
             curl_close($ch);
         }
 
-        // if weird simplexml error then you may have the a user with
-        // a user_meta wc_ie_client_id defined that not exists in InvoiceXpress
-        if ($this->_debug)
-            var_dump($result);
-
-        if ($result && $result != " ") {
-            $res = print_r($result, true);
-            if ($this->_debug) {
-                echo("result string = {" . $res . "}");
-            }
-
-            $this->_serverAnswer = $result;
-
-            $response = json_decode($result, true);
-
-            $r = print_r($response, true);
-
-            if ($this->_debug) {
-                echo("response = " . $r);
-            }
-
-            $this->_response = $response;
-        }
-
-        $this->_success = (($http_status == '201 Created') || ($http_status == '200 OK'));
         if ($this->_debug) {
             echo("http status = " . $http_status . "\n");
         }
 
+
+        // detects if there was HTML on the output, which means there was some
+        // error
+        if ($result != strip_tags($result)) {
+        	$this->_was_html_response = TRUE;
+        	$this->_error = "ERROR!!!\nThere was a HTML response!\n";
+        	$this->_raw_response = $result;
+        	return;
+        }
+
+
+
+        if ($result && $result != " ") {
+            $res = print_r($result, true);
+            if ($this->_debug) {
+                echo("\n\nresult string = {" . $res . "}\n\n");
+            }
+
+            $this->_raw_response = $result;
+
+            $json_decoded = json_decode($result, true);
+
+            $r = print_r($json_decoded, true);
+
+            if ($this->_debug) {
+                echo("\nresponse = " . $r);
+            }
+
+            $this->_json_response = $json_decoded;
+        }
+
+
+
+        $this->_success = (($http_status == '201 Created') 
+        	|| ($http_status == '200 OK'
+        	|| ($http_status = '202 Accepted')));
+
+
         if (isset($response['error'])) {
-            $this->_error = $response['error'];
+            $this->_success = FALSE;
+            $this->_error = $response['errors'];
         }
     }
 

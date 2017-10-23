@@ -64,3 +64,6 @@ The API response should be in the ```$response``` variable, which contains a PHP
 
 Only the methods to list and manipulate Invoices, Clients and access the Invoice Items are available. Methods that use other things like Estimates, Guides, Purchase Orders, Sequences, Taxes and Accounts were not implemented (yet).
 Some methods that require that the args are passed through JSON as request (and don't use HTTP GET method) to the API server are still to be implemented.
+
+## Implementation project
+Have a look at the [ivxapi](https://github.com/digfish/ivxapi) project, which provides a example case of use of this library, along with unitary tests.
