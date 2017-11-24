@@ -4,9 +4,10 @@
     "description": "PHP client implementation of InvoiceXpress API using new json-based API 2.0",
     "license" : "MIT",
     "autoload": {
-				    "classmap":  [
-				    	"lib/"
-				    ]
+				    "psr-0":  {
+				    	"digfish\\" : "lib/digfish",
+				    	"digfish\\ivx_api2_php\\" : "lib/digfish/ivx_api2_php"
+				    }
 				}
 }
 
