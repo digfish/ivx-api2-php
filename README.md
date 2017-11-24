@@ -11,6 +11,9 @@ If you intend to use this code in a project of yours, I show below some examples
 With the following class, which extends the class in InvoiceXpressRequest.php :
 
 ```php
+
+use digfish\ivx_api2_php\InvoiceXpressRequest;
+
 <?php class MyInvoiceXpressApi extends InvoiceXpressRequest
 {
     public static function init($domain, $token)   {
