@@ -2,7 +2,8 @@
 
 namespace digfish\ivx_api2_php;
 
-use \Exception;
+use digfish\ivx_api2_php\InvoiceXpressRequestException;
+
 
 /**
  * A simple PHP API wrapper for the InvoiceXpress API 2.0 .
@@ -18,9 +19,7 @@ use \Exception;
  * @license    MIT
  * @version    2.0
  */
-class InvoiceXpressRequestException extends Exception {
-    
-}
+
 
 class InvoiceXpressRequest {
     /*

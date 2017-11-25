@@ -7,6 +7,9 @@
 				    "psr-0":  {
 				    	"digfish\\" : "lib/digfish",
 				    	"digfish\\ivx_api2_php\\" : "lib/digfish/ivx_api2_php"
+				    },
+				    "psr-4": {
+				    	"digfish\\" : "lib/digfish"
 				    }
 				}
 }
