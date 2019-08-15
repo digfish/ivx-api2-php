@@ -29,6 +29,7 @@ use digfish\ivx_api2_php\InvoiceXpressRequest;
         $this->post($args);
         echo "** Invoking {$this->_method} **\n ";
         $response = $this->getResponse();
+        $this->request();
 
         if (!$this->success()) {
             echo "Something got wrong!\n";
